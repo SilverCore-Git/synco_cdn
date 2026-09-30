@@ -8,7 +8,7 @@
 
 use std::fs::File;
 use std::io;
-use std::os::unix::fs::{FileExt, MetadataExt};
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -73,11 +73,9 @@ pub fn stream_range(file: Arc<File>, start: u64, end: u64, budget: BufferBudget,
             let chunk = end.saturating_sub(offset).min(to_u64(BUFFER_UNIT));
             let file = Arc::clone(&file);
             let read_at = offset;
-            let block = tokio::task::spawn_blocking(move || -> io::Result<Vec<u8>> {
+            let block = tokio::task::spawn_blocking(move || {
                 let len = to_usize(chunk).ok_or_else(|| io::Error::other("taille de bloc hors bornes"))?;
-                let mut data = vec![0u8; len];
-                file.read_exact_at(&mut data, read_at)?;
-                Ok(data)
+                read_block(&file, read_at, len)
             })
             .await;
 
@@ -104,6 +102,28 @@ pub fn stream_range(file: Arc<File>, start: u64, end: u64, budget: BufferBudget,
         metrics.range_read.observe(started.elapsed());
     });
     ChannelBody::new(rx, length)
+}
+
+/// Lit `len` octets à partir de `offset`, directement dans la capacité
+/// libre du tampon : pas de mise à zéro préalable (cf. profil : ~15 % du
+/// temps CPU des téléchargements).
+fn read_block(file: &File, offset: u64, len: usize) -> io::Result<Vec<u8>> {
+    let mut data = Vec::with_capacity(len);
+    while data.len() < len {
+        let at = offset.saturating_add(to_u64(data.len()));
+        let before = data.len();
+        match rustix::io::pread(file, rustix::buffer::spare_capacity(&mut data), at) {
+            Ok(_) if data.len() == before => {
+                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "fichier plus court que prévu"));
+            }
+            Ok(_) => {}
+            Err(errno) if errno == rustix::io::Errno::INTR => {}
+            Err(errno) => return Err(errno.into()),
+        }
+    }
+    // La capacité peut dépasser `len` : on ne garde que la plage demandée.
+    data.truncate(len);
+    Ok(data)
 }
 
 #[cfg(test)]

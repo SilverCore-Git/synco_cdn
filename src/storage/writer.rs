@@ -1,30 +1,37 @@
 //! Réception d'une part (cf. docs/plan/04-moteur-io.md#principes).
 //!
-//! Le corps arrive par fragments de quelques dizaines de Kio. Ils sont
-//! regroupés dans des tampons de 1 Mio (budget mémoire) et chaque tampon
-//! plein est écrit à sa position (`pwrite`) dans le pool de threads
-//! bloquants, pendant que le suivant se remplit : réseau et disque
-//! travaillent en parallèle, avec au plus deux tampons par part.
+//! Le corps arrive par fragments (`Bytes`, jamais copiés) de quelques
+//! dizaines à quelques centaines de Kio. Ils sont regroupés en lots
+//! d'environ 1 Mio, chacun compté dans le budget mémoire, et chaque lot est
+//! écrit à sa position en un seul appel `pwritev` dans le pool de threads
+//! bloquants, pendant que le lot suivant se remplit : réseau et disque
+//! travaillent en parallèle, avec au plus deux lots par part, et aucun octet
+//! n'est recopié en espace utilisateur.
 //!
 //! L'empreinte SHA-256 est calculée dans la même tâche que l'écriture,
 //! pendant que les octets sont encore dans le cache du processeur.
 
 use std::fs::File;
-use std::os::unix::fs::FileExt;
+use std::io::{self, IoSlice};
 use std::sync::Arc;
 use std::time::Duration;
 
-use bytes::Buf;
+use bytes::{Buf, Bytes};
 use http_body::Body;
 use http_body_util::BodyExt;
+use rustix::io::Errno;
 use sha2::{Digest, Sha256};
+use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 
 use crate::error::CdnError;
-use crate::limits::{BUFFER_UNIT, BudgetedBuffer, BufferBudget};
+use crate::limits::{BUFFER_UNIT, BufferBudget};
 use crate::storage::session::{HASH_LEN, PartGuard, persist_part};
 use crate::storage::space::is_no_space;
-use crate::util::{to_u64, to_usize};
+use crate::util::to_u64;
+
+/// Nombre maximal de tampons par appel `pwritev` (IOV_MAX sous Linux).
+const IOV_MAX: usize = 1024;
 
 /// Paramètres de réception d'une part.
 #[derive(Debug, Clone, Copy)]
@@ -35,8 +42,17 @@ pub struct PartWriteOptions {
     pub strict_durability: bool,
 }
 
-/// Tâche d'écriture en cours : rend l'état du hachage et le tampon (réutilisé).
-type PendingWrite = JoinHandle<std::io::Result<(Sha256, BudgetedBuffer)>>;
+/// Lot de fragments reçus, écrit en une fois. Sa mémoire est comptée dans
+/// le budget jusqu'à la fin de l'écriture.
+#[derive(Debug)]
+struct Batch {
+    frames: Vec<Bytes>,
+    len: usize,
+    _permit: OwnedSemaphorePermit,
+}
+
+/// Écriture en cours : rend l'état du hachage.
+type PendingWrite = JoinHandle<io::Result<Sha256>>;
 
 /// Reçoit le corps `body` de la part réservée par `guard` et l'écrit à sa
 /// place. `expected_hash` : empreinte annoncée par le client (`X-Part-Sha256`).
@@ -50,7 +66,7 @@ pub async fn write_part<B>(
     options: PartWriteOptions,
 ) -> Result<u64, CdnError>
 where
-    B: Body + Unpin,
+    B: Body<Data = Bytes> + Unpin,
     B::Error: std::fmt::Display,
 {
     let session = Arc::clone(guard.session());
@@ -59,13 +75,11 @@ where
     let base_offset =
         session.part_offset(index).ok_or(CdnError::bad_request("bad_part_index", "Index de part hors du fichier."))?;
     let data_file = Arc::clone(&guard.files().data);
-    let buffer_capacity = to_usize(expected_len).unwrap_or(BUFFER_UNIT).clamp(1, BUFFER_UNIT);
 
     let mut received: u64 = 0;
     let mut write_offset = base_offset;
     let mut hasher = Some(Sha256::new());
-    let mut filling: Option<BudgetedBuffer> = None;
-    let mut spare: Option<BudgetedBuffer> = None;
+    let mut batch: Option<Batch> = None;
     let mut pending: Option<PendingWrite> = None;
 
     loop {
@@ -78,39 +92,32 @@ where
             }
             Ok(Some(Ok(frame))) => frame,
         };
-        let Ok(mut data) = frame.into_data() else {
+        let Ok(data) = frame.into_data() else {
             continue; // trailers : ignorés
         };
+        if data.is_empty() {
+            continue;
+        }
 
         received = received
-            .checked_add(to_u64(data.remaining()))
+            .checked_add(to_u64(data.len()))
             .filter(|total| *total <= expected_len)
             .ok_or(CdnError::bad_request("bad_part_length", "La part est plus longue que prévu."))?;
 
-        while data.has_remaining() {
-            let buffer = match filling.as_mut() {
-                Some(buffer) => buffer,
-                None => {
-                    let buffer = match spare.take() {
-                        Some(buffer) => buffer,
-                        None => budget.buffer(buffer_capacity).await?,
-                    };
-                    filling.insert(buffer)
-                }
-            };
-            let room = buffer_capacity.saturating_sub(buffer.data.len());
-            let take = room.min(data.remaining());
-            buffer.data.extend_from_slice(data.chunk().get(..take).unwrap_or_default());
-            data.advance(take);
+        let current = match batch.as_mut() {
+            Some(current) => current,
+            None => batch.insert(Batch { frames: Vec::new(), len: 0, _permit: budget.acquire().await? }),
+        };
+        current.len = current.len.saturating_add(data.len());
+        current.frames.push(data);
 
-            if buffer.data.len() >= buffer_capacity
-                && let Some(full) = filling.take()
-            {
-                let written = to_u64(full.data.len());
-                (hasher, spare) = finish_pending(pending.take(), hasher, spare).await?;
-                pending = Some(spawn_write(&data_file, full, write_offset, &mut hasher)?);
-                write_offset = write_offset.saturating_add(written);
-            }
+        if current.len >= BUFFER_UNIT
+            && let Some(full) = batch.take()
+        {
+            let written = to_u64(full.len);
+            hasher = finish_pending(pending.take(), hasher).await?;
+            pending = Some(spawn_write(&data_file, full, write_offset, &mut hasher)?);
+            write_offset = write_offset.saturating_add(written);
         }
     }
 
@@ -118,13 +125,12 @@ where
         return Err(CdnError::bad_request("bad_part_length", "La part est plus courte que prévu."));
     }
 
-    // Dernier tampon partiel, puis attente de toutes les écritures.
-    if let Some(last) = filling.take().filter(|b| !b.data.is_empty()) {
-        (hasher, spare) = finish_pending(pending.take(), hasher, spare).await?;
+    // Dernier lot, puis attente de toutes les écritures.
+    if let Some(last) = batch.take() {
+        hasher = finish_pending(pending.take(), hasher).await?;
         pending = Some(spawn_write(&data_file, last, write_offset, &mut hasher)?);
     }
-    (hasher, spare) = finish_pending(pending.take(), hasher, spare).await?;
-    drop(spare);
+    hasher = finish_pending(pending.take(), hasher).await?;
 
     let digest: [u8; HASH_LEN] =
         hasher.ok_or_else(|| CdnError::internal("écriture de part", "état de hachage perdu"))?.finalize().into();
@@ -152,36 +158,51 @@ where
     Ok(received)
 }
 
-/// Lance l'écriture d'un tampon plein dans le pool bloquant. Le hachage est
-/// déplacé dans la tâche et rendu avec le tampon.
+/// Lance l'écriture d'un lot dans le pool bloquant. Le hachage est déplacé
+/// dans la tâche et rendu à la fin.
 fn spawn_write(
     file: &Arc<File>,
-    buffer: BudgetedBuffer,
+    batch: Batch,
     offset: u64,
     hasher: &mut Option<Sha256>,
 ) -> Result<PendingWrite, CdnError> {
     let mut state = hasher.take().ok_or_else(|| CdnError::internal("écriture de part", "état de hachage perdu"))?;
     let file = Arc::clone(file);
     Ok(tokio::task::spawn_blocking(move || {
-        file.write_all_at(&buffer.data, offset)?;
-        state.update(&buffer.data);
-        let mut buffer = buffer;
-        buffer.data.clear();
-        Ok((state, buffer))
+        pwrite_all_vectored(&file, &batch.frames, offset)?;
+        for frame in &batch.frames {
+            state.update(frame);
+        }
+        Ok(state)
     }))
 }
 
-/// Attend l'écriture précédente et récupère le hachage et le tampon libéré.
-async fn finish_pending(
-    pending: Option<PendingWrite>,
-    hasher: Option<Sha256>,
-    spare: Option<BudgetedBuffer>,
-) -> Result<(Option<Sha256>, Option<BudgetedBuffer>), CdnError> {
+/// Écrit tous les fragments à partir de `offset`, en reprenant après une
+/// écriture partielle ou une interruption (`EINTR`).
+pub fn pwrite_all_vectored(file: &File, frames: &[Bytes], mut offset: u64) -> io::Result<()> {
+    let mut slices: Vec<IoSlice<'_>> = frames.iter().filter(|f| !f.is_empty()).map(|f| IoSlice::new(f)).collect();
+    let mut remaining: &mut [IoSlice<'_>] = &mut slices;
+    while !remaining.is_empty() {
+        let window = remaining.get(..remaining.len().min(IOV_MAX)).unwrap_or_default();
+        let written = match rustix::io::pwritev(file, window, offset) {
+            Ok(0) => return Err(io::Error::new(io::ErrorKind::WriteZero, "pwritev n'a rien écrit")),
+            Ok(written) => written,
+            Err(errno) if errno == Errno::INTR => continue,
+            Err(errno) => return Err(errno.into()),
+        };
+        offset = offset.saturating_add(to_u64(written));
+        IoSlice::advance_slices(&mut remaining, written);
+    }
+    Ok(())
+}
+
+/// Attend l'écriture précédente et récupère l'état du hachage.
+async fn finish_pending(pending: Option<PendingWrite>, hasher: Option<Sha256>) -> Result<Option<Sha256>, CdnError> {
     let Some(task) = pending else {
-        return Ok((hasher, spare));
+        return Ok(hasher);
     };
     match task.await {
-        Ok(Ok((state, buffer))) => Ok((Some(state), Some(buffer))),
+        Ok(Ok(state)) => Ok(Some(state)),
         Ok(Err(error)) if is_no_space(&error) => Err(CdnError::insufficient_storage()),
         Ok(Err(error)) => Err(CdnError::internal("écriture de part", error)),
         Err(join_error) => Err(CdnError::internal("tâche d'écriture", join_error)),
