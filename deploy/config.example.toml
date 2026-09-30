@@ -1,0 +1,59 @@
+# Configuration de synco-cdn (cf. docs/plan/08-exploitation.md).
+# Chaque clé peut être surchargée par SYNCO_CDN_<SECTION>__<CLÉ>,
+# par exemple SYNCO_CDN_STORAGE__DATA_DIR=/srv/synco/storage.
+# Vérifier : synco-cdn --config /etc/synco-cdn/config.toml --check-config
+
+[listen]
+public   = "127.0.0.1:9100"   # derrière nginx (cdn.synco.one)
+internal = "127.0.0.1:9101"   # synco_api et Prometheus uniquement
+
+[storage]
+data_dir          = "/srv/synco/storage"   # = FM_DATA_DIR de synco_api
+min_free_bytes    = "20GiB"                # réserve jamais entamée
+min_free_percent  = 5
+strict_durability = false                  # true = fdatasync à chaque part
+
+[limits]
+max_file_bytes                   = "10GiB"
+buffer_budget_bytes              = "512MiB"  # mémoire max. des tampons d'E/S
+max_connections                  = 10000
+max_parts_in_flight_per_transfer = 8
+max_open_sessions                = 20000
+
+[runtime]
+worker_threads   = 0   # 0 = nombre de cœurs
+blocking_threads = 0   # 0 = 2 × nombre de cœurs
+
+[timeouts]
+header_read    = "10s"
+body_idle      = "30s"
+shutdown_grace = "30s"
+
+[tickets]
+# kid → clé publique Ed25519 (32 octets, base64 ou base64url).
+# Rechargées sans redémarrage par SIGHUP (rotation des clés).
+public_keys        = { "2026-10" = "REMPLACER_PAR_LA_CLÉ_PUBLIQUE" }
+clock_skew_seconds = 30
+max_lifetime       = "2h"
+
+[api]
+internal_url         = "http://127.0.0.1:9000"
+internal_secret_file = "/etc/synco-cdn/internal_secret"   # hexadécimal, ≥ 32 octets
+callback_timeout     = "5s"
+
+[cors]
+# Origines exactes (schéma://hôte[:port]), rechargées par SIGHUP.
+allowed_origins = [
+  "https://ORIGINE_WEB_DE_SYNCO_APP",
+  "tauri://localhost",
+  "http://tauri.localhost",
+  "capacitor://localhost",
+]
+
+[downloads]
+mode         = "direct"         # ou "accel" : envoi délégué à nginx (sendfile)
+accel_prefix = "/_cdn_files/"
+
+[log]
+level  = "info"   # syntaxe EnvFilter, ex. "info,synco_cdn=debug"
+format = "json"   # ou "text"

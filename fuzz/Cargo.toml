@@ -1,0 +1,44 @@
+# Cibles de fuzzing (cf. docs/plan/09-tests-benchmarks.md#fuzzing-cargo-fuzz).
+#
+#   rustup toolchain install nightly && cargo install cargo-fuzz
+#   cargo +nightly fuzz run ticket -- -max_total_time=3600
+#
+# Critère : aucune panique, aucun dépassement de temps.
+
+[package]
+name = "synco-cdn-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+synco-cdn = { path = "..", default-features = false }
+
+# Hors de l'espace de travail du service.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "ticket"
+path = "fuzz_targets/ticket.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "range"
+path = "fuzz_targets/range.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "config"
+path = "fuzz_targets/config.rs"
+test = false
+doc = false
+bench = false

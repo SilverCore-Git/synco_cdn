@@ -1,0 +1,36 @@
+# /etc/systemd/system/synco-cdn.service
+[Unit]
+Description=synco-cdn (transport de fichiers chiffrés de bout en bout)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/synco-cdn --config /etc/synco-cdn/config.toml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=1
+User=synco-cdn
+Group=synco
+UMask=0007
+LimitNOFILE=1048576
+TimeoutStopSec=40
+
+# Cloisonnement
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/srv/synco/storage
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target
