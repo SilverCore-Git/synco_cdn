@@ -1,0 +1,155 @@
+{
+  "description": "Vecteurs de tickets synco_cdn (sct1). Générés par generate.mjs, ne pas modifier à la main.",
+  "public_keys": {
+    "vec-1": "GX9rI-FshTLGq8g4-s1ep4m-DHaykgM0A5v6iz02jWE"
+  },
+  "policy": {
+    "clock_skew_secs": 30,
+    "max_lifetime_secs": 7200,
+    "max_file_bytes": 10737418240
+  },
+  "cases": [
+    {
+      "name": "upload valide",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ok",
+      "part_count": 256
+    },
+    {
+      "name": "download valide",
+      "token": "sct1.vec-1.eyJvcCI6ImRvd24iLCJ0aWQiOiJhM2Q5YzdlMS0yYjRmLTRjNmQtOGUwZi0xMTIyMzM0NDU1NjYiLCJmaWQiOiIwYjdhMmQ4ZS01YjFmLTRmNTUtOGEzMy0yZTRmNWE2YjdjOGQiLCJzdWIiOiJ1c2VyLTQyIiwiaWF0IjoxNzU5MjI5OTkwLCJleHAiOjE3NTkyMzA4OTAsInNpemUiOjEwNzM3NDE4NDAsIm10aW1lIjoiMTc1OTIyOTAwMDEyMzQ1Njc4OSJ9.l9Y8sdduLPgN_M5wXmEo51h6zsvjQAIK9OxmGRby1UjWBJffVD92lmSudIgo7wxV7DUSPXh64hz5SS11Z6rwAw",
+      "op": "down",
+      "now": 1759230000,
+      "expect": "ok"
+    },
+    {
+      "name": "upload présenté pour un download",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "down",
+      "now": 1759230000,
+      "expect": "ticket_wrong_operation"
+    },
+    {
+      "name": "expiré",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "up",
+      "now": 1759233571,
+      "expect": "ticket_expired"
+    },
+    {
+      "name": "dans la tolérance d'horloge",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "up",
+      "now": 1759233569,
+      "expect": "ok",
+      "part_count": 256
+    },
+    {
+      "name": "pas encore valide",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "up",
+      "now": 1759229909,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "signature altérée",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5_ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "clé inconnue",
+      "token": "sct1.vec-2.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.m7yY8z_zSm4aeLVb9_9e9ualp_JaVfwvm9GV7WGnGiihDL1o6cuC03_SQXyBAB3aJbzbb07Rk3ftAJgUjG3uBA",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_unknown_key"
+    },
+    {
+      "name": "préfixe de version inconnu",
+      "token": "sct9.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "champ inconnu signé",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjAsImFkbWluIjp0cnVlfQ.EUgD22XVFqtgw1ImYW9xjkbq1UPUX5jOmdpzGyhPkdB1oxfR9DvM2nQvFy3Lt76qhgzDZI_MyvMXg3FA07SkBA",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "opération inconnue signée",
+      "token": "sct1.vec-1.eyJvcCI6ImRlbGV0ZSIsInRpZCI6IjZmMWMxZjNlLTFjMWEtNGE3MC05ZDFmLTFiMWMxZDFlMWYyMCIsImZpZCI6IjBiN2EyZDhlLTViMWYtNGY1NS04YTMzLTJlNGY1YTZiN2M4ZCIsInN1YiI6InVzZXItNDIiLCJpYXQiOjE3NTkyMjk5NDAsImV4cCI6MTc1OTIzMzU0MCwic2l6ZSI6MTA3Mzc0MTg0MCwicHN6Ijo0MTk0MzIwfQ.ZSixBzoFm2zRU_PWdsHdxrT7zGr5jXwYgipntt5rJfW4mYLqNI0u3EpNh5pnASvmEcwBVsOqYTuXQIbs612KBQ",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "part trop petite",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjEwMjR9.avDKYATTgqsrJK0IKQb9QgLA2Zg2gUGaZP1ZJO0b2Sn-a1-Kdd9Wi1N9EHkmRwNpBDdhkmw8ubdGo4RIDw2qBw",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "fichier trop gros",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMTgxMTE2MDA2NCwicHN6Ijo0MTk0MzIwfQ.timB-hCgxq_DJNXWhlJRvYAYwsygs8eUsORxTwbtHyzk6ny1QbufhF0GcFAMAYh3sWoCECqTpC53Ct8pa-DeAw",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "durée de vie excessive",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjM3MTQxLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.e4Ifk4jYFNT2uiCZqbiRO6AzWjkyNqN61Y0KK4-rsB9FoLGxwt5BF2nadZv0K64-IKxVeZOdRIObCB9vSCY7Dw",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "mtime numérique",
+      "token": "sct1.vec-1.eyJvcCI6ImRvd24iLCJ0aWQiOiJhM2Q5YzdlMS0yYjRmLTRjNmQtOGUwZi0xMTIyMzM0NDU1NjYiLCJmaWQiOiIwYjdhMmQ4ZS01YjFmLTRmNTUtOGEzMy0yZTRmNWE2YjdjOGQiLCJzdWIiOiJ1c2VyLTQyIiwiaWF0IjoxNzU5MjI5OTkwLCJleHAiOjE3NTkyMzA4OTAsInNpemUiOjEwNzM3NDE4NDAsIm10aW1lIjoxNzU5MjI5MDAwfQ.PuF5x5ZhErZN-cTR4oV9gDdGvXBHvdKziM0K_7AE1Grjsa0Id1qx1kjKxNL8x3WBes65pZxTGyeLZYTzB_n6Bw",
+      "op": "down",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "identifiant non UUID",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiLi4vLi4vZXRjL3Bhc3N3ZCIsImZpZCI6IjBiN2EyZDhlLTViMWYtNGY1NS04YTMzLTJlNGY1YTZiN2M4ZCIsInN1YiI6InVzZXItNDIiLCJpYXQiOjE3NTkyMjk5NDAsImV4cCI6MTc1OTIzMzU0MCwic2l6ZSI6MTA3Mzc0MTg0MCwicHN6Ijo0MTk0MzIwfQ.rETmYCBDBhC3DI3dD_Yvy7IN05RJdYAypE5XLSqEmi7BHt-69uUcBzBHm0qHR9gqR-oIMaHPxsC1WkEHPO4JDw",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "contenu signé non JSON",
+      "token": "sct1.vec-1.bm90IGpzb24.4Fopxq-t4qSITNhgL6_gxTCaQYXgRytfutBSyXmSjezEaL2rGon02PkAx2lmeSKSB3HQjUMQey_dJb_92_jZAQ",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "segment supplémentaire",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoidXNlci00MiIsImlhdCI6MTc1OTIyOTk0MCwiZXhwIjoxNzU5MjMzNTQwLCJzaXplIjoxMDczNzQxODQwLCJwc3oiOjQxOTQzMjB9.VabiBY5-ecINJqm7p8QvNYTq-RPeiUNAQNguzzcFVEdF7InuxFd7ZMDhuvWN4yAupXaS6dlGn1JXp_pKgjYvAg.x",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "trop long",
+      "token": "sct1.vec-1.eyJvcCI6InVwIiwidGlkIjoiNmYxYzFmM2UtMWMxYS00YTcwLTlkMWYtMWIxYzFkMWUxZjIwIiwiZmlkIjoiMGI3YTJkOGUtNWIxZi00ZjU1LThhMzMtMmU0ZjVhNmI3YzhkIiwic3ViIjoieHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4IiwiaWF0IjoxNzU5MjI5OTQwLCJleHAiOjE3NTkyMzM1NDAsInNpemUiOjEwNzM3NDE4NDAsInBzeiI6NDE5NDMyMH0.XgBo-ZWLMyN4uoB0ifosb75y2SYhhFyonQHqZZSl2pjl-XHqTTvIJ7JZvUM9UhFYyc78QOI_mE5_8Akea1A5DQ",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_invalid"
+    },
+    {
+      "name": "vide",
+      "token": "",
+      "op": "up",
+      "now": 1759230000,
+      "expect": "ticket_missing"
+    }
+  ]
+}
