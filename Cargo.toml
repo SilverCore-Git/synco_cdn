@@ -1,0 +1,84 @@
+[package]
+name = "synco-cdn"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+description = "Service de transport de fichiers chiffrés de bout en bout pour Synco"
+license = "UNLICENSED"
+publish = false
+
+[lib]
+name = "synco_cdn"
+path = "src/lib.rs"
+
+[[bin]]
+name = "synco-cdn"
+path = "src/main.rs"
+
+[features]
+default = ["mimalloc"]
+# Allocateur mimalloc : moins de contention entre threads sur les tampons
+# (cf. docs/plan/04-moteur-io.md). Désactivable si aucun compilateur C
+# n'est disponible (`--no-default-features`).
+mimalloc = ["dep:mimalloc"]
+
+# Toutes les versions ci-dessous ont été publiées au moins 7 jours avant
+# leur ajout (règle du projet), y compris les dépendances transitives
+# figées dans Cargo.lock.
+[dependencies]
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "net", "time", "sync", "signal", "macros", "io-util"] }
+hyper = { version = "1.11.1", features = ["server", "client", "http1", "http2"] }
+hyper-util = { version = "0.1.20", features = ["tokio", "server", "server-auto", "server-graceful", "client-legacy", "http1", "http2"] }
+http = "1.5.0"
+http-body = "1.1.0"
+http-body-util = "0.1.5"
+bytes = "1.12.1"
+ed25519-dalek = "3.0.0"
+base64 = "0.23.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+uuid = { version = "1.26.1", features = ["serde"] }
+sha2 = "0.11.0"
+hmac = "0.13.0"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }
+rustix = { version = "1.1.5", features = ["fs"] }
+toml = "1.1.6"
+thiserror = "2.0.20"
+mimalloc = { version = "0.1.52", optional = true }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+proptest = "1.11.0"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+# Une panique (qui ne devrait jamais arriver, cf. lints) est capturée par
+# requête au lieu d'arrêter le processus : `unwind` est donc nécessaire.
+panic = "unwind"
+debug = "line-tables-only"
+
+# Règles « zéro panique » (docs/plan/05-robustesse-securite.md). Les tests
+# sont assouplis dans clippy.toml.
+[lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unused_must_use = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+indexing_slicing = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+string_slice = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+exit = "deny"
+mem_forget = "deny"
