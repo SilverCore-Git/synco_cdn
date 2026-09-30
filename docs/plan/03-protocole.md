@@ -120,9 +120,18 @@ d'affichage `inline`.
 
 ## Routes internes (écouteur `127.0.0.1:9101`)
 
-Authentifiées par HMAC-SHA256 avec un secret partagé API ↔ CDN, sur
-`méthode + chemin + horodatage + corps`. Horodatage à ±60 s, pour empêcher
-le rejeu.
+Authentifiées par HMAC-SHA256 avec un secret partagé API ↔ CDN (au moins
+32 octets, en hexadécimal dans la configuration). Chaque requête, dans les
+deux sens, porte :
+
+| En-tête | Valeur |
+|---------|--------|
+| `X-Synco-Timestamp` | secondes Unix ; refusé au-delà de ±60 s (anti-rejeu) |
+| `X-Synco-Signature` | HMAC-SHA256 hexadécimal de `MÉTHODE "\n" CHEMIN "\n" HORODATAGE "\n" CORPS` |
+
+`CHEMIN` est le chemin sans paramètres (`/internal/v1/revocations`),
+`CORPS` les octets exacts du corps (vide pour un `DELETE`). La comparaison
+se fait en temps constant. Une signature invalide renvoie `403 bad_signature`.
 
 | Route | Appelant | Effet |
 |-------|----------|-------|
@@ -131,18 +140,26 @@ le rejeu.
 | `GET /readyz` | supervision | `200` si le stockage est accessible en écriture et que l'espace libre dépasse la réserve |
 | `GET /metrics` | Prometheus | Métriques (cf. [08](08-exploitation.md#métriques)) |
 
-## Route appelée par le CDN sur synco_api
+## Routes appelées par le CDN sur synco_api
 
-`POST {API_INTERNAL_URL}/internal/cdn/uploads/{tid}/complete`, signée avec
-le même schéma HMAC :
+Toutes signées avec le même schéma HMAC.
+
+`POST {API_INTERNAL_URL}/internal/cdn/uploads/{tid}/abort` (corps `{}`) :
+le client a abandonné l'envoi, ou la session a expiré ; l'API libère le
+quota réservé. Au mieux : un échec est seulement journalisé.
+
+`POST {API_INTERNAL_URL}/internal/cdn/uploads/{tid}/complete` :
 
 ```json
 { "tid": "…", "fid": "…", "size": 1073741840, "hash": "sha256p:…" }
 ```
 
-Réponses attendues : `201` ou `200` avec les métadonnées ; `409` si l'API
-refuse (transfert inconnu, expiré ou droits retirés) : le CDN supprime alors
-le fichier. Détails côté API dans [06](06-integration-synco-api.md).
+Réponses attendues : `201` ou `200` avec les métadonnées ; `4xx` (hors
+`429`) si l'API refuse (transfert inconnu, expiré ou droits retirés) : le
+CDN supprime alors le fichier. `5xx`, `429` ou absence de réponse : trois
+tentatives (délais 200 ms et 800 ms), puis `503` au client ; le balayage
+périodique rappelle ensuite l'API toutes les minutes jusqu'à une réponse
+définitive. Détails côté API dans [06](06-integration-synco-api.md).
 
 ## CORS
 
@@ -155,6 +172,24 @@ le fichier. Détails côté API dans [06](06-integration-synco-api.md).
 - `Access-Control-Max-Age: 7200` (plafond de Chromium).
 - Pas de cookies (`credentials` inutiles : le ticket est dans un en-tête).
 - Origine non autorisée : réponse sans en-têtes CORS, le navigateur bloque.
+
+## Codes d'erreur
+
+| Statut | `error` | Cas |
+|--------|---------|-----|
+| 400 | `bad_part_index`, `bad_part_length`, `bad_part_checksum`, `body_error` | Part invalide ou interrompue ; non marquée reçue |
+| 401 | `ticket_missing`, `ticket_invalid`, `ticket_unknown_key`, `ticket_expired`, `ticket_revoked` | Ticket refusé |
+| 403 | `ticket_wrong_operation`, `ticket_wrong_target`, `cors_forbidden` | Ticket valide mais hors périmètre, origine refusée |
+| 404 | `upload_not_found`, `file_not_found`, `not_found` | Ressource inconnue |
+| 405 | `method_not_allowed` | Méthode non acceptée |
+| 408 | `body_timeout` | Plus aucun octet reçu pendant `timeouts.body_idle` |
+| 409 | `part_in_progress`, `parts_in_progress`, `parts_missing` | À réessayer plus tard |
+| 409 | `upload_completing`, `upload_finalized`, `upload_mismatch`, `upload_rejected`, `file_exists`, `file_changed` | Conflit d'état, définitif |
+| 416 | `range_not_satisfiable` | Plage hors du fichier (`Content-Range: bytes */<taille>`) |
+| 422 | `part_checksum_mismatch` | `X-Part-Sha256` ne correspond pas |
+| 429 | `too_many_parts_in_flight` | Contre-pression, avec `Retry-After` |
+| 503 | `api_unavailable`, `upload_initializing`, `too_many_sessions`, `not_ready` | Transitoire, avec `Retry-After` |
+| 507 | `insufficient_storage` | Réserve d'espace disque atteinte |
 
 ## Format des erreurs
 

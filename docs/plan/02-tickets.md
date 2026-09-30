@@ -67,7 +67,7 @@ Téléchargement (`down`) :
 | Champ | Type | Sens |
 |-------|------|------|
 | `size` | entier | Taille du fichier au moment de l'émission |
-| `mtime` | entier (ns) | Date de modification du fichier au moment de l'émission |
+| `mtime` | chaîne décimale (ns) | Date de modification du fichier au moment de l'émission. Chaîne et non nombre : les nanosecondes dépassent la précision des nombres JSON en JavaScript. Côté API : `fs.statSync(p, { bigint: true }).mtimeNs.toString()` |
 
 `size` et `mtime` permettent au CDN de détecter un fichier modifié entre
 l'émission du ticket et la lecture (édition, réenvoi) : les plages lues
@@ -114,7 +114,7 @@ Pour les cas qui ne peuvent pas attendre l'expiration :
 
 La liste de révocation est en mémoire, bornée, et chaque entrée expire
 après la durée de vie maximale d'un ticket. Elle est persistée dans
-`.cdn-uploads/revocations` pour survivre à un redémarrage.
+`.cdn-uploads/revocations.json` pour survivre à un redémarrage.
 
 ## Rotation des clés
 
@@ -124,6 +124,14 @@ Le CDN charge un ensemble de clés publiques (`kid → clé`). Procédure :
    sans redémarrage via `SIGHUP`).
 2. Faire signer l'API avec la nouvelle clé.
 3. Après la durée de vie maximale d'un ticket (1 h), retirer l'ancienne clé.
+
+## Implémentation de référence côté API
+
+[`tests/vectors/generate.mjs`](../../tests/vectors/generate.mjs) signe des
+tickets avec `node:crypto` seul : c'est le code à reprendre dans
+`synco_api/src/cdn/cdnTickets.ts`. Une clé privée Ed25519 brute de 32
+octets s'importe en la préfixant de l'en-tête PKCS#8
+`302e020100300506032b657004220420`.
 
 ## Vecteurs de test partagés
 

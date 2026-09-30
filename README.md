@@ -22,6 +22,49 @@ L'objectif de performance : **seules la vitesse du disque et celle du réseau
 limitent le débit**. L'objectif de robustesse : **aucun plantage**, quelles
 que soient les entrées, la charge ou l'état du disque.
 
+## Utilisation
+
+```sh
+cargo build --release                       # binaire : target/release/synco-cdn
+cargo test                                  # unitaires, vecteurs Node, bout en bout
+cargo clippy --all-targets -- -D warnings   # lints « zéro panique »
+cargo run --release --example bench         # débit envoi + téléchargement (variables BENCH_*)
+node tests/vectors/generate.mjs             # régénère les vecteurs de tickets
+
+synco-cdn --config deploy/config.example.toml --check-config
+synco-cdn --config /etc/synco-cdn/config.toml
+```
+
+Signaux : `SIGTERM`/`SIGINT` arrêt propre, `SIGHUP` rechargement des clés
+de tickets et des origines CORS. Exemples de déploiement dans
+[`deploy/`](deploy/) (configuration commentée, service systemd, vhost nginx).
+
+## Organisation du code
+
+| Module | Rôle |
+|--------|------|
+| `ticket`, `range` | Analyse des entrées non fiables, sans E/S (testées par entrées aléatoires, fuzzées) |
+| `storage::session` | Session d'envoi : état atomique des parts, phases, persistance |
+| `storage::writer` | Réception d'une part : lots de fragments écrits par `pwritev`, SHA-256 |
+| `storage::reader` | Téléchargement : `pread` par blocs de 1 Mio, lecture anticipée bornée |
+| `storage::recovery` | Reprise des sessions au démarrage |
+| `storage` | Ouverture (préallocation), finalisation (`fdatasync`, renommage sans écrasement), annulation |
+| `http` | Écouteurs, isolation des paniques par requête, routes publiques et internes, CORS |
+| `server` | Assemblage, balayage périodique, arrêt propre |
+| `limits`, `metrics`, `revocation`, `internal_auth`, `api_client`, `config` | Budget mémoire, Prometheus, révocations, HMAC, rappels vers synco_api, configuration |
+
+Garanties vérifiées à la compilation : `unsafe` interdit ; `unwrap`,
+`expect`, `panic!`, indexation directe, arithmétique non vérifiée et
+conversions `as` refusées (cf. `Cargo.toml`, section `[lints]`).
+
+## État
+
+Étapes 0 à 3 de la [feuille de route](docs/plan/10-feuille-de-route.md)
+réalisées : le service est complet de son côté. Il reste à brancher
+synco_api (émission des tickets, rappel de fin d'envoi) et synco_app
+(étapes 4 et 5). Mesures sur la machine de développement :
+[04 — Mesures](docs/plan/04-moteur-io.md#mesures-première-version).
+
 ## Plans
 
 | # | Document | Contenu |

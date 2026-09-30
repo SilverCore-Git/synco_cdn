@@ -11,15 +11,18 @@ mémoire bornée et prévisible quelle que soit la charge.
    d'assemblage, pas de copie finale. Plusieurs threads écrivent des parts
    différentes du même fichier en même temps sans verrou : `write_at` prend
    `&File` et Linux garantit des écritures positionnelles indépendantes.
-2. **Coalescence.** Le réseau livre le corps par petits fragments (16 à 64
-   Kio). Ils sont accumulés dans un tampon de 1 Mio avant chaque `pwrite` :
-   un appel système par Mio au lieu d'un par fragment.
-3. **Double tampon.** Pendant qu'un tampon est écrit dans le pool bloquant,
-   le suivant se remplit depuis le socket. Réseau et disque travaillent en
-   parallèle, avec au plus deux tampons par part en vol.
-4. **Aucune copie inutile.** Les fragments sont des `Bytes` (comptés par
-   référence) ; seule la coalescence copie, une fois, dans le tampon
-   d'écriture.
+2. **Écriture vectorielle, sans copie.** Le réseau livre le corps par
+   fragments (`Bytes` de hyper, comptés par référence). Ils sont regroupés
+   en lots d'environ 1 Mio, écrits par un seul `pwritev` : un appel système
+   par Mio, et aucun octet recopié en espace utilisateur. (Une première
+   version copiait les fragments dans un tampon ; le profil montrait 40 %
+   du temps CPU en `memmove`.)
+3. **Double lot.** Pendant qu'un lot est écrit dans le pool bloquant, le
+   suivant se remplit depuis le socket. Réseau et disque travaillent en
+   parallèle, avec au plus deux lots par part en vol.
+4. **Lecture sans mise à zéro.** Les téléchargements lisent (`pread`)
+   directement dans la capacité libre du tampon, sans l'initialiser
+   (15 % du temps CPU dans la première version).
 5. **Préallocation.** `fallocate` à l'ouverture : les blocs sont réservés
    d'un coup, contigus autant que possible, et un disque plein est détecté
    avant le premier octet.
@@ -48,7 +51,7 @@ deux blocs.
 Chemin par défaut, entièrement en Rust :
 1. ouverture du fichier une fois par requête, `fstat` (contrôle `size` et
    `mtime` du ticket) ;
-2. lecture positionnelle (`read_at`) de blocs de 1 Mio dans le pool
+2. lecture positionnelle (`pread`) de blocs de 1 Mio dans le pool
    bloquant, deux blocs d'avance ;
 3. envoi en streaming dans le corps de la réponse.
 
@@ -110,6 +113,29 @@ plusieurs Go/s sur NVMe), une implémentation io_uring pourra le remplacer
 sans toucher au reste. Elle n'est pas prévue dans la première version :
 elle ajoute de la complexité et les bibliothèques tokio + io_uring sont
 moins mûres.
+
+## Mesures (première version)
+
+`cargo run --release --example bench` : client et serveur dans le même
+processus, boucle TCP locale, parts de 4 Mio + 16 octets.
+Machine : Ryzen 5 5600X (12 threads), NVMe Crucial P3, btrfs.
+
+| Scénario | Envoi | Téléchargement |
+|----------|-------|----------------|
+| Référence disque (`dd`, 2 Gio, `fdatasync`) | 2,7 Gio/s | — |
+| 16 fichiers × 256 Mio, 8 parts en vol, HTTP/1.1, NVMe | 1,8 Gio/s | 4,0 Gio/s |
+| 8 fichiers × 256 Mio, 4 parts en vol, HTTP/2, NVMe | 1,7 Gio/s | 1,4 Gio/s |
+| 8 fichiers × 256 Mio, 8 parts en vol, HTTP/1.1, en RAM (tmpfs) | 2,9 Gio/s | 4,5 Gio/s |
+
+Pendant ces mesures, 84 % du temps CPU est dans le noyau (boucle TCP
+locale des deux côtés, système de fichiers) et le processus n'occupe que
+5 cœurs sur 12 : le moteur du CDN n'est pas le facteur limitant. En
+production, derrière une carte 10 Gbit/s (≈ 1,16 Gio/s), le débit sera
+borné par le réseau. Le reste du temps CPU utilisateur est surtout le
+SHA-256 des parts (accéléré SHA-NI).
+
+À refaire sur la machine de production, avec un client distant, pour les
+objectifs ci-dessous.
 
 ## Objectifs chiffrés
 

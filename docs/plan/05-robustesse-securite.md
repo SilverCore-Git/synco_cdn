@@ -50,7 +50,7 @@ compilation, pas seulement par convention :
 | Taille d'une part | 64 Mio | Refusée dès le ticket |
 | Taille d'un fichier | config (10 Gio par défaut) | Refusée dès le ticket |
 | Longueur d'un ticket | 2 048 octets | `401` avant décodage |
-| En-têtes d'une requête | 16 Kio | `431` |
+| En-têtes d'une requête | HTTP/2 : 16 Kio ; HTTP/1.1 : 64 en-têtes (et tampon de lecture de hyper) | Requête refusée |
 | Durée de lecture des en-têtes | 10 s | Connexion fermée |
 | Inactivité d'un corps de requête | 30 s | Connexion fermée, part non marquée reçue |
 | Espace disque libre | réserve de 5 % ou 20 Gio (config) | `507`, aucune écriture commencée |

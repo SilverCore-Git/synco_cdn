@@ -1,8 +1,16 @@
 # 10 — Feuille de route
 
 Chaque étape se termine par un livrable utilisable et des critères
-vérifiables. Les étapes 1 à 5 se font dans synco_cdn ; les étapes 4 et 5
-touchent aussi synco_api et synco_app.
+vérifiables.
+
+**État (30/09/2026)** : étapes 0 à 3 réalisées dans ce dépôt (le choix du
+mode de téléchargement par défaut attend la mesure sur la machine de
+production), fuzzing écrit mais pas encore exécuté (nightly requis).
+`cargo deny` et `cargo audit` ne sont pas encore dans la CI. Étapes 4 à 8
+à faire.
+
+Les étapes 1 à 5 se font dans synco_cdn ; les étapes 4 et 5 touchent aussi
+synco_api et synco_app.
 
 ## Étape 0 — Squelette
 

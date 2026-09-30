@@ -78,10 +78,17 @@ Pour un fichier E2EE au format v2 (`iv` commençant par `v2:`), ajoute :
 "download": { "cdnUrl": "https://cdn.synco.one", "ticket": "sct1.…", "expiresAt": … }
 ```
 
-`size` et `mtime` du ticket viennent d'un `fs.stat` du fichier (même
-machine). Aucun aller-retour supplémentaire pour le client.
+`size` et `mtime` du ticket viennent d'un `fs.statSync(chemin, { bigint:
+true })` du fichier (même machine) ; `mtime` est `mtimeNs.toString()`. Aucun aller-retour supplémentaire pour le client.
 
-## Route interne appelée par le CDN
+## Routes internes appelées par le CDN
+
+Signature : cf. [03](03-protocole.md#routes-internes-écouteur-12700019101)
+(en-têtes `X-Synco-Timestamp` et `X-Synco-Signature`).
+
+`POST /internal/cdn/uploads/:tid/abort` : passe le transfert `OPEN` en
+`ABORTED` (quota libéré). Idempotent, `204` ou `404`.
+
 
 `POST /internal/cdn/uploads/:tid/complete`, montée **avant**
 `authMiddleware`, protégée par :
