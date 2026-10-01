@@ -6,3 +6,4 @@
 # Déploiement Docker : jamais versionnés
 /.env
 /secrets/
+/docker-compose.override.yml

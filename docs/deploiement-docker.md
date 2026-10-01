@@ -112,6 +112,38 @@ parts interrompues.
 3. Faire signer synco_api avec la nouvelle clé.
 4. Une heure plus tard, retirer l'ancienne clé et refaire `docker compose up -d`.
 
+## Poste de développement avec Podman sans root
+
+Deux différences avec Docker :
+
+- **Utilisateur** : `CDN_UID=0` et `CDN_GID=0`. Sans root, l'uid 0 du
+  conteneur est votre propre utilisateur sur l'hôte : synco_api, lancée par
+  vous, peut lire et supprimer les blobs.
+- **Réseau** : le conteneur ne joint l'hôte que par son IP réseau (pasta),
+  ce qui obligerait synco_api à écouter sur le réseau local. Une surcharge
+  locale, `docker-compose.override.yml` (non versionnée, fusionnée
+  automatiquement), fait partager au conteneur le réseau de l'hôte, en
+  restant sur la boucle locale :
+
+  ```yaml
+  services:
+    cdn:
+      network_mode: host
+      ports: !reset []
+      extra_hosts: !reset []
+      sysctls: !reset {}
+      environment:
+        SYNCO_CDN_LISTEN__PUBLIC: 127.0.0.1:9100
+        SYNCO_CDN_LISTEN__INTERNAL: 127.0.0.1:9101
+        SYNCO_CDN_API__INTERNAL_URL: http://127.0.0.1:9002
+  ```
+
+  Côté synco_api : `CDN_URL=http://localhost:9100` (autorisé par la CSP de
+  développement de synco_app) et `CDN_CALLBACK_LISTEN=127.0.0.1:9002`.
+
+Commandes : `podman compose up -d --build` (service utilisateur
+`podman.socket` démarré).
+
 ## Sécurité du conteneur
 
 - Utilisateur sans privilèges, système de fichiers en lecture seule (seul
