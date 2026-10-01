@@ -43,7 +43,7 @@ de tickets et des origines CORS. Exemples de déploiement dans
 
 | Module | Rôle |
 |--------|------|
-| `ticket`, `range` | Analyse des entrées non fiables, sans E/S (testées par entrées aléatoires, fuzzées) |
+| `ticket`, `range` | Analyse des entrées non fiables, sans E/S (testées par entrées aléatoires, fuzzées : [`fuzz/`](fuzz/README.md)) |
 | `storage::session` | Session d'envoi : état atomique des parts, phases, persistance |
 | `storage::writer` | Réception d'une part : lots de fragments écrits par `pwritev`, SHA-256 |
 | `storage::reader` | Téléchargement : `pread` par blocs de 1 Mio, lecture anticipée bornée |

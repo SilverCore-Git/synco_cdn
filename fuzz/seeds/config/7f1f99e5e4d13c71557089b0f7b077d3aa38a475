@@ -1,0 +1,7 @@
+[storage]
+data_dir = "/srv"
+[tickets]
+public_keys = { "k" = "GX9rI-FshTLGq8g4-s1ep4m-DHaykgM0A5v6iz02jWE" }
+[api]
+internal_url = "http://127.0.0.1:9"
+internal_secret = "abababababababababababababababababababababababababababababababab"

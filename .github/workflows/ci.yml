@@ -16,8 +16,11 @@ jobs:
         run: cargo clippy --all-targets --locked -- -D warnings
       - name: Tests
         run: cargo test --locked
-      - name: Vecteurs de tickets à jour
-        run: node tests/vectors/generate.mjs && git diff --exit-code tests/vectors
+      - name: Vecteurs de tickets et corpus de départ à jour
+        run: |
+          node tests/vectors/generate.mjs
+          node fuzz/generate-seeds.mjs
+          git diff --exit-code tests/vectors fuzz/seeds
       - name: Cibles de fuzzing (compilation)
         run: cargo check --locked --manifest-path fuzz/Cargo.toml
       - name: Build release

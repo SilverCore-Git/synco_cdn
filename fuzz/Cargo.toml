@@ -1,9 +1,9 @@
 # Cibles de fuzzing (cf. docs/plan/09-tests-benchmarks.md#fuzzing-cargo-fuzz).
 #
-#   rustup toolchain install nightly && cargo install cargo-fuzz
-#   cargo +nightly fuzz run ticket -- -max_total_time=3600
+#   fuzz/setup.sh              # toolchain nightly + cargo-fuzz (versions de versions.env)
+#   fuzz/run.sh all 300        # 5 minutes par cible
 #
-# Critère : aucune panique, aucun dépassement de temps.
+# Critère : aucune panique, aucun dépassement de temps. Cf. fuzz/README.md.
 
 [package]
 name = "synco-cdn-fuzz"
@@ -14,9 +14,14 @@ publish = false
 [package.metadata]
 cargo-fuzz = true
 
+# Mêmes versions que le service (cf. ../Cargo.toml).
 [dependencies]
 libfuzzer-sys = "0.4.13"
 synco-cdn = { path = "..", default-features = false }
+http = "1.5.0"
+ed25519-dalek = "3.0.0"
+base64 = "0.23.1"
+serde_json = "1.0.151"
 
 # Hors de l'espace de travail du service.
 [workspace]
@@ -39,6 +44,27 @@ bench = false
 [[bin]]
 name = "config"
 path = "fuzz_targets/config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ticket_claims"
+path = "fuzz_targets/ticket_claims.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "path"
+path = "fuzz_targets/path.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "session_record"
+path = "fuzz_targets/session_record.rs"
 test = false
 doc = false
 bench = false

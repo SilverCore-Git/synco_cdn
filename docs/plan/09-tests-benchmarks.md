@@ -26,10 +26,16 @@ Pour chaque module pur ou presque :
 
 ## Fuzzing (`cargo fuzz`)
 
-Cibles : analyse des tickets, analyse de `Range`, analyse du corps JSON
-interne, rechargement de `<tid>.session` / `<tid>.parts` corrompus.
-Critère : aucune panique, aucun dépassement de temps, après au moins
-1 heure par cible en CI de nuit.
+Six cibles : tickets (chaîne quelconque), champs d'un ticket correctement
+signé, en-tête `Range`, chemins d'URL, configuration, fichier de session
+corrompu relu au démarrage. Critère : aucune panique, aucun dépassement de
+temps, aucune allocation démesurée.
+
+Mise en œuvre : [`fuzz/README.md`](../../fuzz/README.md) — scripts
+`fuzz/setup.sh` et `fuzz/run.sh` communs au poste de travail et à la CI,
+corpus de départ versionné, dictionnaires, workflow Gitea
+`.gitea/workflows/fuzz.yml` (3 min par cible sur chaque PR, 30 min chaque
+nuit avec corpus conservé en cache).
 
 ## Tests d'intégration
 
@@ -111,5 +117,5 @@ l'objectif doit être expliqué par le profil avant d'être accepté.
 | Lints (règles de [05](05-robustesse-securite.md)) | `cargo clippy --all-targets -- -D warnings` |
 | Tests | `cargo nextest run` |
 | Dépendances | `cargo deny check`, `cargo audit` |
-| Fuzzing court | 5 min par cible à chaque PR, 1 h la nuit |
+| Fuzzing | 3 min par cible à chaque PR, 30 min la nuit (Gitea, `.gitea/workflows/fuzz.yml`) |
 | Benchmark de non-régression | scénario court à chaque PR sur `main`, alerte si −10 % |

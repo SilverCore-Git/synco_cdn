@@ -1,0 +1,32 @@
+# CI du service. Même contenu que .github/workflows/ci.yml : Gitea ignore
+# .github/workflows dès que .gitea/workflows existe.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    # Label de votre act_runner (cf. fuzz/README.md#runner-gitea).
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust (version fixée par rust-toolchain.toml)
+        run: ci/ensure-rustup.sh
+      - name: Format
+        run: cargo fmt --check
+      - name: Lints « zéro panique »
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Tests
+        run: cargo test --locked
+      - name: Vecteurs de tickets et corpus de départ à jour
+        run: |
+          node tests/vectors/generate.mjs
+          node fuzz/generate-seeds.mjs
+          git diff --exit-code tests/vectors fuzz/seeds
+      - name: Cibles de fuzzing (compilation)
+        run: cargo check --locked --manifest-path fuzz/Cargo.toml
+      - name: Build release
+        run: cargo build --release --locked

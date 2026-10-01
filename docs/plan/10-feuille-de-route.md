@@ -5,7 +5,7 @@ vérifiables.
 
 **État (30/09/2026)** : étapes 0 à 3 réalisées dans ce dépôt (le choix du
 mode de téléchargement par défaut attend la mesure sur la machine de
-production), fuzzing écrit mais pas encore exécuté (nightly requis).
+production). Fuzzing en place (6 cibles, CI Gitea), cf. `fuzz/README.md`.
 `cargo deny` et `cargo audit` ne sont pas encore dans la CI. Étapes 4 à 8
 à faire.
 

@@ -754,7 +754,11 @@ dependencies = [
 name = "synco-cdn-fuzz"
 version = "0.0.0"
 dependencies = [
+ "base64",
+ "ed25519-dalek",
+ "http",
  "libfuzzer-sys",
+ "serde_json",
  "synco-cdn",
 ]
 

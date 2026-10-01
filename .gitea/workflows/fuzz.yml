@@ -1,0 +1,93 @@
+# Fuzzing continu (cf. fuzz/README.md).
+#
+# - Pull request : 3 min par cible, pour attraper vite une régression.
+# - Chaque nuit  : 30 min par cible (2 processus), puis minimisation du corpus.
+# - À la demande : durée et parallélisme au choix (onglet Actions).
+#
+# Le corpus découvert est conservé d'une exécution à l'autre (cache), et
+# toute entrée qui fait planter est publiée en artefact et affichée en
+# base64 dans le journal.
+name: Fuzzing
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "fuzz/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".gitea/workflows/fuzz.yml"
+  schedule:
+    # Les planifications ne s'exécutent que sur la branche par défaut.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Durée par cible (secondes)"
+        default: "1800"
+      jobs:
+        description: "Processus libFuzzer en parallèle par cible"
+        default: "2"
+
+jobs:
+  fuzz:
+    # Label de votre act_runner (cf. fuzz/README.md#runner-gitea).
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ticket, ticket_claims, range, path, config, session_record]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Durée et parallélisme
+        run: |
+          case "${{ github.event_name }}" in
+            schedule)          seconds=1800; jobs=2 ;;
+            workflow_dispatch) seconds="${{ inputs.seconds }}"; jobs="${{ inputs.jobs }}" ;;
+            *)                 seconds=180;  jobs=1 ;;
+          esac
+          echo "FUZZ_SECONDS=${seconds}" >> "$GITHUB_ENV"
+          echo "FUZZ_JOBS=${jobs}" >> "$GITHUB_ENV"
+          echo "Cible ${{ matrix.target }} : ${seconds} s, ${jobs} processus"
+
+      # Toolchain nightly et cargo-fuzz : réinstallés seulement quand
+      # fuzz/versions.env change.
+      - name: Cache des outils
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-fuzz
+            ~/.cargo/registry
+            ~/.rustup/toolchains
+          key: fuzz-tools-${{ hashFiles('fuzz/versions.env', 'fuzz/Cargo.lock') }}
+
+      - name: Installation (nightly + cargo-fuzz)
+        run: fuzz/setup.sh
+
+      # Clé unique par exécution : chaque exécution enregistre son corpus et
+      # la suivante repart du plus récent.
+      - name: Corpus accumulé
+        uses: actions/cache@v4
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+
+      - name: Fuzzing
+        run: fuzz/run.sh "${{ matrix.target }}" "${FUZZ_SECONDS}"
+
+      - name: Minimisation du corpus
+        if: success() && github.event_name != 'pull_request'
+        run: fuzz/run.sh --minimize "${{ matrix.target }}"
+
+      # upload-artifact@v4 n'est pas pris en charge par toutes les versions
+      # de Gitea : v3 fonctionne partout.
+      - name: Entrée qui fait planter
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: crash-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          retention-days: 30
