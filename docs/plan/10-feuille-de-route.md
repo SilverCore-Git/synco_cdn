@@ -74,12 +74,20 @@ supprimé.
 (`cdnE2e.test.ts`) ✅ ; tests existants verts, hors 3 tests P20 déjà en
 échec sur `recipe/papaye` (import manquant dans `routes/tasks.ts`).
 
-## Étape 5 — Intégration synco_app
+## Étape 5 — Intégration synco_app ✅ (hors test navigateur)
 
-- `chunkedUpload.ts`, `chunkedDownload.ts`, `http.ts` : cibles CDN, gestion
-  du ticket (renouvellement), nouveaux codes d'erreur, action « Reprendre ».
-- CSP (`index.html`, `tauri.conf.json`).
-- Test de bout en bout avec le chiffrement v2 réel.
+Fait (synco_app, branche `feat/cdn`) :
+- `services/transfers/cdn.ts` (remplace `http.ts`) : tickets, renouvellement
+  avant expiration et sur `401`, contenu remplacé (`409`) relu ;
+  `chunkedUpload.ts` (création et remplacement de contenu),
+  `chunkedDownload.ts` ; tout fichier en E2EE v2, clé d'espace, de DM ou de
+  salon (`fileKeys.ts`) ;
+- CSP (`index.html`, `tauri.conf.json`) ;
+- OnlyOffice et l'ancien format v1 retirés.
+
+Reste : action « Reprendre » après rechargement de la page (l'état des
+parts reçues est disponible via `GET /v1/uploads/{tid}`), test de bout en
+bout dans un vrai navigateur.
 
 **Critère** : envoi et téléchargement de fichiers de 1 Mo à 10 Go depuis le
 navigateur et depuis l'app bureau, coupure réseau de 30 s absorbée sans
