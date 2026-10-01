@@ -36,8 +36,12 @@ synco-cdn --config /etc/synco-cdn/config.toml
 ```
 
 Signaux : `SIGTERM`/`SIGINT` arrêt propre, `SIGHUP` rechargement des clés
-de tickets et des origines CORS. Exemples de déploiement dans
-[`deploy/`](deploy/) (configuration commentée, service systemd, vhost nginx).
+de tickets et des origines CORS.
+
+**Déploiement** : avec Docker Compose (`docker/init.sh` puis
+`docker compose up -d --build`), cf. [docs/deploiement-docker.md](docs/deploiement-docker.md) ;
+ou sans conteneur, avec les exemples de [`deploy/`](deploy/) (configuration
+commentée, service systemd, vhost nginx).
 
 ## Organisation du code
 

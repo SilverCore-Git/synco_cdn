@@ -1,0 +1,7 @@
+# Seuls Cargo.toml, Cargo.lock, src/ et docker/config.toml sont utiles à
+# l'image : tout le reste est exclu (contexte léger, aucun secret copié).
+*
+!Cargo.toml
+!Cargo.lock
+!src/
+!docker/config.toml

@@ -4,6 +4,7 @@
 //! synco-cdn --config /etc/synco-cdn/config.toml    démarre le service
 //! synco-cdn --config … --check-config              valide la configuration et sort
 //! synco-cdn --version
+//! synco-cdn --healthcheck [URL]                    sonde de santé (HEALTHCHECK Docker)
 //! ```
 //!
 //! Signaux : `SIGTERM` / `SIGINT` = arrêt propre ; `SIGHUP` = rechargement
@@ -12,7 +13,13 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
+use std::time::Duration;
 
+use bytes::Bytes;
+use http_body_util::Empty;
+use hyper_util::client::legacy::Client;
+use hyper_util::client::legacy::connect::HttpConnector;
+use hyper_util::rt::TokioExecutor;
 use synco_cdn::config::LogFormat;
 use synco_cdn::{Config, Server};
 use tokio::signal::unix::{SignalKind, signal};
@@ -22,11 +29,17 @@ use tracing_subscriber::EnvFilter;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-const USAGE: &str = "usage : synco-cdn --config <fichier.toml> [--check-config] | --version";
+const USAGE: &str = "usage : synco-cdn --config <fichier.toml> [--check-config] | --healthcheck [URL] | --version";
+
+/// Sonde de santé par défaut : écouteur interne, même conteneur.
+const DEFAULT_HEALTHCHECK_URL: &str = "http://127.0.0.1:9101/readyz";
+/// Délai de la sonde de santé.
+const HEALTHCHECK_TIMEOUT: Duration = Duration::from_secs(3);
 
 enum Command {
     Run(PathBuf),
     Check(PathBuf),
+    Healthcheck(String),
     Version,
 }
 
@@ -39,6 +52,10 @@ fn parse_args() -> Result<Command, String> {
             "--config" | "-c" => config = Some(PathBuf::from(args.next().ok_or("--config attend un chemin")?)),
             "--check-config" => check = true,
             "--version" | "-V" => return Ok(Command::Version),
+            "--healthcheck" => {
+                let url = args.next().unwrap_or_else(|| DEFAULT_HEALTHCHECK_URL.to_owned());
+                return Ok(Command::Healthcheck(url));
+            }
             other => return Err(format!("argument inconnu « {other} »")),
         }
     }
@@ -59,6 +76,7 @@ fn main() -> ExitCode {
             eprintln!("synco-cdn {}", env!("CARGO_PKG_VERSION"));
             return ExitCode::SUCCESS;
         }
+        Command::Healthcheck(url) => return healthcheck(&url),
         Command::Check(path) => {
             return match Config::load(&path) {
                 Ok(_) => {
@@ -144,6 +162,42 @@ fn reload(state: &Arc<synco_cdn::state::AppState>, path: &Path) {
     match Config::load(path).map_err(|e| e.to_string()).and_then(|config| state.reload(&config)) {
         Ok(()) => tracing::info!("clés de tickets et origines CORS rechargées"),
         Err(error) => tracing::error!(%error, "rechargement refusé, configuration précédente conservée"),
+    }
+}
+
+/// Sonde de santé : `GET url`, succès si la réponse est `200`. Permet un
+/// `HEALTHCHECK` Docker sans outil supplémentaire dans l'image (ni curl, ni
+/// shell nécessaire).
+fn healthcheck(url: &str) -> ExitCode {
+    let Ok(uri) = url.parse::<http::Uri>() else {
+        eprintln!("URL de sonde invalide : {url}");
+        return ExitCode::from(2);
+    };
+    let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            eprintln!("runtime : {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let status = runtime.block_on(async {
+        let client: Client<HttpConnector, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build_http();
+        tokio::time::timeout(HEALTHCHECK_TIMEOUT, client.get(uri)).await
+    });
+    match status {
+        Ok(Ok(response)) if response.status() == http::StatusCode::OK => ExitCode::SUCCESS,
+        Ok(Ok(response)) => {
+            eprintln!("sonde : statut {}", response.status());
+            ExitCode::FAILURE
+        }
+        Ok(Err(error)) => {
+            eprintln!("sonde : {error}");
+            ExitCode::FAILURE
+        }
+        Err(_) => {
+            eprintln!("sonde : délai dépassé");
+            ExitCode::FAILURE
+        }
     }
 }
 

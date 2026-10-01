@@ -1,0 +1,26 @@
+# Configuration de synco-cdn dans le conteneur.
+#
+# Les valeurs propres au déploiement (clés de tickets, URL de l'API,
+# origines CORS, limites…) viennent du fichier .env, via les variables
+# SYNCO_CDN_<SECTION>__<CLÉ> définies dans docker-compose.yml.
+# Référence complète et commentée : deploy/config.example.toml.
+
+[listen]
+# Toutes interfaces dans le conteneur ; l'exposition réelle est fixée par
+# les ports publiés de docker-compose.yml (127.0.0.1 par défaut).
+public   = "0.0.0.0:9100"
+internal = "0.0.0.0:9101"
+
+[storage]
+data_dir = "/data"
+
+[tickets]
+# Fourni par SYNCO_CDN_TICKETS__PUBLIC_KEYS (CDN_TICKET_PUBLIC_KEYS dans .env).
+public_keys = {}
+
+[api]
+internal_url         = "http://host.docker.internal:9000"
+internal_secret_file = "/run/secrets/cdn_internal_secret"
+
+[log]
+format = "json"
