@@ -55,16 +55,24 @@ local.
 **Critère** : tests verts, débit ≥ 90 % de la référence, mémoire constante
 avec des lecteurs lents.
 
-## Étape 4 — Intégration synco_api
+## Étape 4 — Intégration synco_api ✅
+
+Fait (synco_api, branche `feat/cdn`), cf. [06](06-integration-synco-api.md).
+Décision en cours de route : pas de cohabitation. Les données existantes
+sont réinitialisées, tout fichier passe en E2EE par le CDN, l'ancien
+système (chiffrement serveur, routes de transfert de l'API, OnlyOffice) est
+supprimé.
 
 - Table `CdnTransfer`, quota en base (transaction `Serializable`).
-- Routes `transfers/uploads`, `renew`, ticket dans `/meta`.
-- Route interne `complete`, client HMAC vers le CDN (révocations,
-  annulations), tâche de nettoyage.
-- Derrière `CDN_URL` : absente = comportement actuel inchangé.
+- Routes `transfers/uploads` (+ `replace` pour l'édition), `renew`, ticket
+  dans `/meta`.
+- Écouteur dédié des rappels (`complete`, `abort`), client HMAC vers le CDN
+  (révocations, annulations), entretien (transferts expirés, blobs
+  orphelins).
 
-**Critère** : test de bout en bout API + CDN (vrai rappel) ; tests existants
-de synco_api toujours verts.
+**Critère** : test de bout en bout API + CDN avec le vrai binaire
+(`cdnE2e.test.ts`) ✅ ; tests existants verts, hors 3 tests P20 déjà en
+échec sur `recipe/papaye` (import manquant dans `routes/tasks.ts`).
 
 ## Étape 5 — Intégration synco_app
 
@@ -90,15 +98,17 @@ atteints, ou écart expliqué et accepté.
 
 - **Choix nginx vs `rustls`** et **systemd vs PM2**.
 - Configuration nginx, service, réglages système, métriques et alertes.
-- Déploiement : CDN, puis API avec `CDN_URL`, puis app. Surveillance des
-  métriques pendant une semaine.
-- Retour arrière documenté et testé (retrait de `CDN_URL`).
+- Déploiement : CDN, puis API et app ensemble (l'API exige le CDN, l'app
+  doit parler le nouveau protocole). Surveillance des métriques pendant une
+  semaine.
+- Retour arrière : version précédente de l'API et de l'app (pas de
+  cohabitation des deux systèmes).
 
 **Critère** : une semaine en production sans panique ni erreur de rappel non
 résolue.
 
 ## Étape 8 — Nettoyage
 
-- Retrait de `uploadSessions.ts`, `storageQuota.ts` et de la route E2EE par
-  morceaux de synco_api.
+- ~~Retrait de `uploadSessions.ts`, `storageQuota.ts` et de la route E2EE
+  par morceaux de synco_api~~ : fait à l'étape 4.
 - Documentation d'exploitation à jour dans ce dépôt.

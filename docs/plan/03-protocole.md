@@ -142,7 +142,8 @@ se fait en temps constant. Une signature invalide renvoie `403 bad_signature`.
 
 ## Routes appelées par le CDN sur synco_api
 
-Toutes signées avec le même schéma HMAC.
+Toutes signées avec le même schéma HMAC, vers l'écouteur dédié de synco_api
+(`CDN_CALLBACK_LISTEN`, port 9002 par défaut), séparé de l'API publique.
 
 `POST {API_INTERNAL_URL}/internal/cdn/uploads/{tid}/abort` (corps `{}`) :
 le client a abandonné l'envoi, ou la session a expiré ; l'API libère le

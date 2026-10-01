@@ -37,7 +37,7 @@ clock_skew_seconds = 30
 max_lifetime       = "2h"
 
 [api]
-internal_url         = "http://127.0.0.1:9000"
+internal_url         = "http://127.0.0.1:9002"   # CDN_CALLBACK_LISTEN de synco_api
 internal_secret = "abababababababababababababababababababababababababababababababab"   # hexadécimal, ≥ 32 octets
 callback_timeout     = "5s"
 

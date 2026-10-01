@@ -79,7 +79,8 @@ Variables à reporter dans synco_api (cf. docs/plan/06-integration-synco-api.md)
   CDN_INTERNAL_URL=http://127.0.0.1:${CDN_INTERNAL_PORT:-9101}
   CDN_INTERNAL_SECRET=$(cat secrets/cdn_internal_secret)
   CDN_TICKET_KID=${KID}
-  CDN_TICKET_PRIVATE_KEY=<contenu de secrets/ticket_private_key.pem>
+  CDN_TICKET_PRIVATE_KEY_FILE=$(pwd)/secrets/ticket_private_key.pem
+  CDN_CALLBACK_LISTEN=172.17.0.1:9002
 
 secrets/ticket_private_key.pem ne doit être donné qu'à synco_api : le CDN
 n'a besoin que de la clé publique.

@@ -7,7 +7,7 @@ nginx, sur l'hôte, publie `https://cdn.synco.one` vers le conteneur.
 ```
 Internet ──▶ nginx (hôte, TLS) ──▶ 127.0.0.1:9100 ──▶ conteneur synco-cdn
 synco_api (hôte) ──────────────▶ 127.0.0.1:9101 ──▶ (écouteur interne)
-conteneur ──▶ host.docker.internal:9000 ──▶ synco_api (rappels de fin d'envoi)
+conteneur ──▶ host.docker.internal:9002 ──▶ synco_api (écouteur des rappels, 172.17.0.1)
                   │
                   └── /data ⇄ CDN_DATA_DIR (= FM_DATA_DIR de synco_api)
 ```
@@ -38,7 +38,7 @@ secret ou une clé existants.
 | `CDN_DATA_DIR` | Le `FM_DATA_DIR` de synco_api (chemin absolu sur l'hôte) |
 | `CDN_UID`, `CDN_GID` | Propriétaire de ce répertoire (`ls -nd $CDN_DATA_DIR`) : le CDN y crée, l'API y lit, déplace et supprime |
 | `CDN_CORS_ALLOWED_ORIGINS` | Origines de synco_app (web, Tauri, Capacitor), tableau TOML |
-| `CDN_API_INTERNAL_URL` | Adresse de synco_api vue du conteneur. Par défaut l'hôte, port 9000 : synco_api doit alors écouter sur une adresse joignable depuis le pont Docker (pas seulement 127.0.0.1) |
+| `CDN_API_INTERNAL_URL` | Écouteur des rappels de synco_api vu du conteneur. Par défaut `http://host.docker.internal:9002`, c'est-à-dire `CDN_CALLBACK_LISTEN=172.17.0.1:9002` côté API (adresse de `docker0`) |
 | `CDN_DATA_MOUNT_OPTIONS` | `rw`, ou `z` sur un hôte SELinux (Fedora, RHEL, Rocky) ; `init.sh` le détecte |
 
 Les autres variables (limites, mode de téléchargement, journaux) ont des
@@ -54,12 +54,25 @@ CDN_URL=https://cdn.synco.one
 CDN_INTERNAL_URL=http://127.0.0.1:9101
 CDN_INTERNAL_SECRET=<contenu de secrets/cdn_internal_secret>
 CDN_TICKET_KID=<kid>
-CDN_TICKET_PRIVATE_KEY=<contenu de secrets/ticket_private_key.pem>
+CDN_TICKET_PRIVATE_KEY_FILE=<chemin>/secrets/ticket_private_key.pem
+CDN_CALLBACK_LISTEN=172.17.0.1:9002
+FM_DATA_DIR=<CDN_DATA_DIR>
 ```
 
 `secrets/ticket_private_key.pem` est la clé qui signe les tickets : elle
-ne va **que** dans synco_api. Le conteneur du CDN ne reçoit que la clé
-publique.
+ne va **que** dans synco_api (l'utilisateur qui exécute l'API doit pouvoir
+la lire). Le conteneur du CDN ne reçoit que la clé publique. À la place
+des variables `*_FILE`, `CDN_INTERNAL_SECRET` et `CDN_TICKET_PRIVATE_KEY`
+acceptent la valeur elle-même (PEM sur une ligne avec des `\n`).
+
+synco_api refuse de démarrer si l'une de ces variables manque : tous les
+fichiers passent par le CDN.
+
+**Rappels du CDN vers l'API.** Le conteneur joint l'écouteur dédié de
+synco_api (`CDN_CALLBACK_LISTEN`), séparé de l'API publique : nginx ne le
+publie pas. Sur un hôte avec pare-feu (ufw, firewalld), autoriser les
+réseaux Docker vers `172.17.0.1:9002`, par exemple
+`ufw allow from 172.16.0.0/12 to 172.17.0.1 port 9002 proto tcp`.
 
 ### nginx
 
@@ -116,6 +129,6 @@ parts interrompues.
 |----------|----------------|
 | `Permission denied` sur `/data` ou `/run/secrets/…` | Mauvais `CDN_UID`/`CDN_GID`, ou SELinux : `CDN_DATA_MOUNT_OPTIONS=z` |
 | `public_keys : au moins une clé…` | `CDN_TICKET_PUBLIC_KEYS` vide : lancer `docker/init.sh` |
-| Envois finalisés mais `503 api_unavailable` | `CDN_API_INTERNAL_URL` injoignable depuis le conteneur (synco_api écoute-t-elle sur le pont Docker ?) ; le CDN réessaie toutes les minutes |
+| Envois finalisés mais `503 api_unavailable` | `CDN_API_INTERNAL_URL` injoignable depuis le conteneur : `CDN_CALLBACK_LISTEN` de synco_api, pare-feu ; le CDN réessaie toutes les minutes |
 | Conteneur `unhealthy` | `/readyz` échoue : stockage plein (réserve `CDN_MIN_FREE_*` atteinte) ou illisible |
 | `401 ticket_unknown_key` | La clé (`kid`) qui signe côté API n'est pas dans `CDN_TICKET_PUBLIC_KEYS` |
