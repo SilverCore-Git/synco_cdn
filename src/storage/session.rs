@@ -33,7 +33,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::error::CdnError;
-use crate::ticket::part_count;
+use crate::ticket::{MAX_PART_SIZE, MAX_PARTS, MIN_PART_SIZE, part_count};
 use crate::util::{hex_encode, to_u64, to_usize};
 
 const PART_EMPTY: u8 = 0;
@@ -249,7 +249,14 @@ impl UploadSession {
         markers: &[u8],
         phase: Phase,
     ) -> Option<Self> {
-        let count = part_count(size, part_size)?;
+        // Mêmes bornes que les tickets. Indispensable pour une session
+        // relue depuis le disque : un enregistrement corrompu (taille de
+        // part de 1 octet pour 10 Gio…) ferait sinon allouer des milliards
+        // d'états de parts au démarrage. Trouvé par le fuzzing.
+        if !(MIN_PART_SIZE..=MAX_PART_SIZE).contains(&part_size) {
+            return None;
+        }
+        let count = part_count(size, part_size).filter(|count| *count <= MAX_PARTS)?;
         let len = to_usize(count)?;
         let parts: Box<[AtomicU8]> = (0..len)
             .map(|i| {
@@ -539,6 +546,9 @@ impl Drop for PartGuard {
 mod tests {
     use super::*;
 
+    /// Taille de part minimale acceptée.
+    const P: u64 = MIN_PART_SIZE;
+
     fn session(size: u64, part_size: u64) -> (Arc<UploadSession>, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
         let data = dir.path().join("d");
@@ -555,20 +565,20 @@ mod tests {
 
     #[test]
     fn geometry() {
-        let (s, _d) = session(25, 10);
+        let (s, _d) = session(2 * P + P / 2, P);
         assert_eq!(s.part_count, 3);
-        assert_eq!(s.part_len(0), Some(10));
-        assert_eq!(s.part_len(2), Some(5));
-        assert_eq!(s.part_offset(2), Some(20));
+        assert_eq!(s.part_len(0), Some(P));
+        assert_eq!(s.part_len(2), Some(P / 2));
+        assert_eq!(s.part_offset(2), Some(2 * P));
         assert_eq!(s.part_len(3), None);
-        let (empty, _d) = session(0, 10);
+        let (empty, _d) = session(0, P);
         assert_eq!(empty.part_count, 1);
         assert_eq!(empty.part_len(0), Some(0));
     }
 
     #[test]
     fn part_lifecycle_and_completion_invariant() {
-        let (s, _d) = session(25, 10);
+        let (s, _d) = session(2 * P + P / 2, P);
         let PartSlot::Write(guard) = s.acquire_part(0, 8).unwrap() else { panic!() };
         // Même part en parallèle : refusée.
         assert_eq!(s.acquire_part(0, 8).unwrap_err().code, "part_in_progress");
@@ -600,7 +610,7 @@ mod tests {
 
     #[test]
     fn in_flight_limit() {
-        let (s, _d) = session(100, 10);
+        let (s, _d) = session(10 * P, P);
         let guards: Vec<_> = (0..2).map(|i| s.acquire_part(i, 2).unwrap()).collect();
         assert_eq!(s.acquire_part(5, 2).unwrap_err().code, "too_many_parts_in_flight");
         drop(guards);
@@ -618,10 +628,24 @@ mod tests {
         }
         let markers = read_markers(&parts, 6).unwrap();
         let s =
-            UploadSession::new(Uuid::nil(), Uuid::nil(), "u".into(), 60, 10, 0, 0, &markers, Phase::Aborted).unwrap();
+            UploadSession::new(Uuid::nil(), Uuid::nil(), "u".into(), 6 * P, P, 0, 0, &markers, Phase::Aborted).unwrap();
         assert_eq!(s.received_ranges(), vec![[0, 1], [3, 3], [5, 5]]);
         assert_eq!(s.received_count(), 4);
         let hash = file_hash(&parts, 6).unwrap();
         assert!(hash.starts_with("sha256p:") && hash.len() == 8 + 64);
+    }
+
+    #[test]
+    fn out_of_bounds_geometry_is_refused() {
+        let new = |size: u64, part_size: u64| {
+            UploadSession::new(Uuid::nil(), Uuid::nil(), "u".into(), size, part_size, 0, 0, &[], Phase::Aborted)
+        };
+        // Cas trouvé par le fuzzing (cible session_record) : part sous le minimum.
+        assert!(new(0, 65_236).is_none());
+        // Enregistrement corrompu : allocation démesurée évitée.
+        assert!(new(10 << 30, 1).is_none());
+        assert!(new(u64::MAX, P).is_none(), "trop de parts");
+        assert!(new(P * MAX_PARTS, P).is_some());
+        assert!(new(0, MAX_PART_SIZE + 1).is_none());
     }
 }

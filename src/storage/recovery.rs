@@ -297,4 +297,17 @@ mod tests {
         assert!(recover(&layout, 0).is_empty());
         assert_eq!(fs::read(layout.final_path(fid)).unwrap(), b"existant");
     }
+
+    #[test]
+    fn corrupted_geometry_is_dropped_without_allocating() {
+        let (_dir, layout) = setup();
+        let tid = Uuid::from_u128(7);
+        // Taille de part de 1 octet pour 10 Gio : refusée avant toute allocation.
+        let mut corrupted = record(tid, Uuid::from_u128(99), RecordPhase::Open, u64::MAX);
+        corrupted.size = 10 << 30;
+        corrupted.part_size = 1;
+        write_record(&layout.session_record(tid), &corrupted).unwrap();
+        assert!(recover(&layout, 0).is_empty());
+        assert!(!layout.session_record(tid).exists(), "enregistrement corrompu supprimé");
+    }
 }
