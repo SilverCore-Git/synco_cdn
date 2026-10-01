@@ -118,6 +118,18 @@ mod tests {
         assert!(!s.verify("POST", "/internal/v1/revocations", Some("1000"), Some("zz"), b"{}", 1000));
     }
 
+    /// Vecteur partagé avec synco_api (src/cdn/internalAuth.test.ts) : les
+    /// deux implémentations doivent produire exactement cette signature.
+    #[test]
+    fn shared_vector() {
+        let path = "/internal/cdn/uploads/6f1c1f3e-1c1a-4a70-9d1f-1b1c1d1e1f20/complete";
+        let body = br#"{"tid":"6f1c1f3e-1c1a-4a70-9d1f-1b1c1d1e1f20"}"#;
+        assert_eq!(
+            secret().sign("POST", path, 1_759_230_000, body),
+            "b1e12b4f12e8a7520abb8855452e36d2678e15f580c63e7de7f652e253e3ba51"
+        );
+    }
+
     #[test]
     fn secret_rules() {
         assert!(InternalSecret::from_hex("abcd").is_err());
