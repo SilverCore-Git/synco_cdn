@@ -114,10 +114,7 @@ fn health() -> HttpResponse {
     let mut response = text(StatusCode::OK, "ok".to_owned(), "text/plain; charset=utf-8");
     let headers = response.headers_mut();
     headers.insert(VERSION_HEADER, HeaderValue::from_static(env!("CARGO_PKG_VERSION")));
-    if let Some(value) = option_env!("GIT_SHA")
-        .filter(|c| !c.is_empty())
-        .and_then(|c| HeaderValue::from_str(c).ok())
-    {
+    if let Some(value) = option_env!("GIT_SHA").filter(|c| !c.is_empty()).and_then(|c| HeaderValue::from_str(c).ok()) {
         headers.insert(COMMIT_HEADER, value);
     }
     response
