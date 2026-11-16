@@ -116,7 +116,10 @@ d'affichage `inline`.
 
 ### `GET /healthz`
 
-`200 ok` si le processus répond. Sans authentification, sans détail.
+`200 ok` si le processus répond. Sans authentification. En-têtes
+`x-synco-version` (version du binaire) et `x-synco-commit` (commit figé à la
+compilation via `GIT_SHA`, absent sinon), lus par `GET /api/system/info` de
+synco_api.
 
 ## Routes internes (écouteur `127.0.0.1:9101`)
 

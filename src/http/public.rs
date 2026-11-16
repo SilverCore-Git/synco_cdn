@@ -1,6 +1,6 @@
 //! Routage de l'écouteur public.
 
-use http::{Method, Request, StatusCode};
+use http::{HeaderValue, Method, Request, StatusCode};
 use hyper::body::Incoming;
 use uuid::Uuid;
 
@@ -94,7 +94,7 @@ pub async fn handle(
 
     let headers = request.headers();
     match resource {
-        Resource::Health => Ok(text(StatusCode::OK, "ok".to_owned(), "text/plain; charset=utf-8")),
+        Resource::Health => Ok(health()),
         Resource::Uploads => uploads::open(state, headers, log).await,
         Resource::Upload(tid) if method == Method::DELETE => uploads::abort(state, headers, tid, log).await,
         Resource::Upload(tid) => uploads::status(state, headers, tid, log),
@@ -104,11 +104,37 @@ pub async fn handle(
     }
 }
 
+/// Version du binaire (Cargo.toml) et commit (variable `GIT_SHA` au moment de
+/// la compilation, posée par l'image Docker), en en-têtes : le corps reste
+/// « ok » pour les sondes existantes. Lus par synco_api (`/api/system/info`).
+pub const VERSION_HEADER: &str = "x-synco-version";
+pub const COMMIT_HEADER: &str = "x-synco-commit";
+
+fn health() -> HttpResponse {
+    let mut response = text(StatusCode::OK, "ok".to_owned(), "text/plain; charset=utf-8");
+    let headers = response.headers_mut();
+    headers.insert(VERSION_HEADER, HeaderValue::from_static(env!("CARGO_PKG_VERSION")));
+    if let Some(value) = option_env!("GIT_SHA")
+        .filter(|c| !c.is_empty())
+        .and_then(|c| HeaderValue::from_str(c).ok())
+    {
+        headers.insert(COMMIT_HEADER, value);
+    }
+    response
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const ID: &str = "0b7a2d8e-5b1f-4f55-8a33-2e4f5a6b7c8d";
+
+    #[test]
+    fn health_carries_version() {
+        let response = health();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get(VERSION_HEADER).unwrap(), env!("CARGO_PKG_VERSION"));
+    }
 
     #[test]
     fn paths() {

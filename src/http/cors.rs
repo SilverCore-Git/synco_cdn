@@ -16,7 +16,8 @@ use crate::error::CdnError;
 use crate::http::respond::{HttpResponse, no_content};
 
 const ALLOW_HEADERS: &str = "authorization, content-type, range, x-part-index, x-part-sha256";
-const EXPOSE_HEADERS: &str = "content-range, content-length, accept-ranges, etag, retry-after";
+const EXPOSE_HEADERS: &str =
+    "content-range, content-length, accept-ranges, etag, retry-after, x-synco-version, x-synco-commit";
 /// Durée de mise en cache du préflight (plafond de Chromium : 2 h).
 const MAX_AGE_SECS: u64 = 7200;
 

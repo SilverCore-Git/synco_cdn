@@ -28,7 +28,10 @@ RUN mkdir src \
  && cargo build --release --locked \
  && rm -rf src
 
-# 2. Le service.
+# 2. Le service. GIT_SHA (commit) est figé dans le binaire et renvoyé par
+#    /healthz ; déclaré ici pour ne pas invalider la couche des dépendances.
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA}
 COPY src ./src
 RUN touch src/main.rs src/lib.rs \
  && cargo build --release --locked \
